@@ -2,40 +2,93 @@
 	import { fly } from 'svelte/transition';
     import Socials from './Socials.svelte';
 
-    let input_epoch_date: number;
-    $: input_epoch_date = 0;
+    let inputEpochDate: number;
+    $: inputEpochDate = 0;
 
-    let input_human_date: string;
-    $: input_human_date = "";
+    let inputHumanDate: string;
+    $: inputHumanDate = "";
 
-    let show_menu: boolean;
-    $: show_menu = false;
+    let showMenu: boolean;
+    $: showMenu = false;
 
-    let current_date: number;
-    $: current_date = Date.now();
+    let currentDate: number;
+    $: currentDate = Date.now();
 
     const formats: string[] = ["millisecond", "second", "minute", "day"];
 
-    let current_epoch_format: string = formats[0];
-    
-    let autoUpdate: NodeJS.Timeout = setDefaultState();
+	let currentEpochDateFormat: string;
+    $: currentEpochDateFormat = formats[0];
 
-    function setDefaultState(): NodeJS.Timeout {
+	let currentlySelectedInputField: string;
+	$: currentlySelectedInputField = null;
+    
+    let autoUpdate: NodeJS.Timeout = SetDefaultState();
+
+    function SetDefaultState(): NodeJS.Timeout {
         return setInterval(() => {
-            current_date = Date.now()
+            currentDate = Date.now()
+			inputEpochDate = getEpochDate(currentDate);
+			inputHumanDate = getHumanDate(currentDate);
         }, 1000)
     }
 
     const handleChangeEpochFormat = (format: string): void => {
-        
+		currentEpochDateFormat = format;
+        inputEpochDate = getEpochFromMillisecond(currentDate, format);
     }
 
-    // Instatiated as false...
-    const handleMenuClick = (): void => {
-        show_menu = !show_menu;
-    } 
+	const getEpochDate = (currentDate: number): number => {
+		return getEpochFromMillisecond(currentDate, currentEpochDateFormat);
+	}
 
+	const getHumanDate = (currentDate: number): string => {
+		return new Date(currentDate).toDateString();
+	}
 
+	const handleClearDefaultState = (): void => {
+		clearInterval(autoUpdate);
+	}
+
+	function getMillisecondFromEpoch(epoch: number, currentFormat: string): number {
+		switch (currentFormat) {
+			case formats[1]: // s
+				return epoch * 1000;
+			case formats[2]: // m
+				return epoch * 60000;
+			case formats[3]: // d
+				return epoch * 86400000
+			default:         // ms
+				return epoch;
+		}
+	}
+	
+	function getEpochFromMillisecond(epoch: number, currentFormat: string): number {
+		let result: number;
+		switch (currentFormat) {
+			case formats[1]: // s
+				result = epoch / 1000;
+				break;
+			case formats[2]: // m
+				result = epoch / 60000;
+				break;
+			case formats[3]: // d
+				result = epoch / 86400000
+				break;
+			default:         // ms
+				result = epoch;
+				break;
+		}
+		return Math.floor(result);
+	}
+
+	$: getProcessedHumanDate = (): string => {
+		return new Date(Date.parse(inputHumanDate)).toDateString();
+	}
+
+	// Instatiated as false...
+	const handleMenuClick = (): void => {
+        showMenu = !showMenu;
+    }
 
 </script>
 
@@ -51,7 +104,8 @@
             <input 
                 type="number" 
                 id="epoch_date" 
-                bind:value={input_epoch_date} 
+                bind:value={inputEpochDate} 
+				on:click={() => handleClearDefaultState()}
             />
             <div id="dropdown_menu_wrapper"
                 on:click={() => handleMenuClick()}
@@ -60,14 +114,14 @@
                         id="dropdown_button"
                         on:click|preventDefault
                     >
-                        {current_epoch_format}
+                        {currentEpochDateFormat}
                     </button>
-                    {#if show_menu}
+                    {#if showMenu}
                         <ul in:fly="{{y: -30, duration: 200}}" out:fly="{{y: 30, duration: 200}}" id="dropdown_menu">
                             {#each formats as format}
                                 <li 
                                     on:click={() => handleChangeEpochFormat(format)} 
-                                    style={current_epoch_format == format ? "color: var(--color-primary)" : ""};
+                                    style={currentEpochDateFormat == format ? "color: var(--color-primary)" : ""};
                                 >
                                     {format}
                                 </li>
@@ -81,10 +135,11 @@
             <textarea
                 rows={2}
                 id="human_date" 
-                bind:value={input_human_date}
+                bind:value={inputHumanDate}
+				on:click={() => handleClearDefaultState()}
             />
-            {#if input_human_date}
-                <p><span>Input Parsed as: </span>{input_human_date}</p>
+            {#if inputHumanDate}
+                <p><span>Input Parsed as: </span>{getProcessedHumanDate()}</p>
             {/if}
         </div>
     </form>
