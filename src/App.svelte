@@ -1,24 +1,42 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
     import Socials from './Socials.svelte';
+    
+	// INITALLY SET VALUES.
+	let currentDate: number = Date.now();
+    let inputEpochDate: number = currentDate;
+    let inputHumanDate: string = new Date(currentDate).toDateString();
 
-    let inputEpochDate: number;
-    $: inputEpochDate = 0;
+    $: if(currentlySelectedInputField === "epoch") {
+		let newEpochDate = getMillisecondFromEpoch(inputEpochDate, currentEpochDateFormat);
+		if (dateIsValid(newEpochDate)) {
+			inputHumanDate = getHumanDate(newEpochDate);
+			currentDate = newEpochDate;
+		}
+	} else if (currentlySelectedInputField === "human"){
+		let newEpochDate = getEpochFromHumanDate(inputHumanDate);
+		if (dateIsValid(newEpochDate)) {
+			inputEpochDate = getEpochDate(newEpochDate);
+			currentDate = newEpochDate;
+		}
+	}
 
-    let inputHumanDate: string;
-    $: inputHumanDate = "";
+	const dateIsValid = (newEpochDate: number): boolean => {
+		if (new Date(newEpochDate)) { // If the date is invalid the value returned is NaN which is falsy.
+			return true;
+		} else {
+			return false;
+		}
+	}
 
-    let showMenu: boolean;
+	let showMenu: boolean;
     $: showMenu = false;
 
-    let currentDate: number;
-    $: currentDate = Date.now();
-
     const formats: string[] = ["millisecond", "second", "minute", "day"];
-
+	
 	let currentEpochDateFormat: string;
     $: currentEpochDateFormat = formats[0];
-
+	
 	let currentlySelectedInputField: string;
 	$: currentlySelectedInputField = null;
     
@@ -26,7 +44,7 @@
 
     function SetDefaultState(): NodeJS.Timeout {
         return setInterval(() => {
-            currentDate = Date.now()
+            currentDate = Date.now();
 			inputEpochDate = getEpochDate(currentDate);
 			inputHumanDate = getHumanDate(currentDate);
         }, 1000)
@@ -82,7 +100,11 @@
 	}
 
 	$: getProcessedHumanDate = (): string => {
-		return new Date(Date.parse(inputHumanDate)).toDateString();
+		return new Date(getEpochFromHumanDate(inputHumanDate)).toDateString();
+	}
+
+	const getEpochFromHumanDate = (humanDate: string): number => {
+		return Date.parse(humanDate);
 	}
 
 	// Instatiated as false...
@@ -105,7 +127,10 @@
                 type="number" 
                 id="epoch_date" 
                 bind:value={inputEpochDate} 
-				on:click={() => handleClearDefaultState()}
+				on:click={() => {
+					handleClearDefaultState()
+					currentlySelectedInputField = "epoch"
+				}}
             />
             <div id="dropdown_menu_wrapper"
                 on:click={() => handleMenuClick()}
@@ -136,7 +161,10 @@
                 rows={2}
                 id="human_date" 
                 bind:value={inputHumanDate}
-				on:click={() => handleClearDefaultState()}
+				on:click={() => {
+					handleClearDefaultState()
+					currentlySelectedInputField = "human"
+				}}
             />
             {#if inputHumanDate}
                 <p><span>Input Parsed as: </span>{getProcessedHumanDate()}</p>
